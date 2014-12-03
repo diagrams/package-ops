@@ -1,0 +1,37 @@
+* Brainstorming
+
+Idea: a DSL for specifying operations & workflows for Cabal
+packages.  We specify a set of operations and their semantics, then
+construct a monadic DSL via free monads (e.g. using a package like
+'operational'); then programs written in the DSL can be not only
+executed via IO, but also compiled to a pure functional simulation
+that runs using models of e.g. the file system and Hackage.
+
+Brainstorming operations we want to support:
+
++ Cabal file editing
+  + Edit/bump dependency version bounds
+  + Modify version number
++ Building/testing
+  + Kick off cabal builds
+  + Kick off Travis builds?
+  + Run test suites
++ Version control
+  + Commit changes
+  + Push commits
+  + Generate/edit changelog entries
+  + Generate/examine diffs
++ Control flow
+  + Prompt human user with multiple choices
+  + Suspend for human review/confirmation
+  + Undo/rollback --- could e.g. use sandboxed transactions, modifying an
+    in-memory model of the file system, and only actually write to
+    the file system once the transaction is complete.  Within the
+    transaction undo would be easy.
+  + More ambitious ideas, which are made possible by having a deep
+      embedding of a DSL that can be serialized, as long as the
+      embedding does not contain any functions:
+    + Save current state/progress and resume later
+    + Suspend, display a list/tree of commands representing the
+      current continuation, and allow a human user to make changes
+      to it before resuming execution.
