@@ -28,10 +28,18 @@ Brainstorming operations we want to support:
     in-memory model of the file system, and only actually write to
     the file system once the transaction is complete.  Within the
     transaction undo would be easy.
-  + More ambitious ideas, which are made possible by having a deep
+
++ More ambitious ideas, which are made possible by having a deep
       embedding of a DSL that can be serialized, as long as the
       embedding does not contain any functions:
-    + Save current state/progress and resume later
-    + Suspend, display a list/tree of commands representing the
+  + Save current state/progress and resume later
+  + Suspend, display a list/tree of commands representing the
       current continuation, and allow a human user to make changes
       to it before resuming execution.
+  + NOTE that this is possible only if the DSL is not monadic, but
+    only Applicative, or perhaps offering the user finite choices
+    but never having anything which depends on the output of a
+    previous step if that output has infinitely many values.  This
+    would also rule out using packages like operational or
+    MonadPrompt since they assume a monadic DSL.
+
