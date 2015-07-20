@@ -16,11 +16,15 @@ Brainstorming operations we want to support:
   + Kick off cabal builds
   + Kick off Travis builds?
   + Run test suites
+  + stow (symlink) specified version of GHC
+  + delete a cabal sandbox in the current working directory, and restore, preserving add-source dependencies
 + Version control
   + Commit changes
   + Push commits
   + Generate/edit changelog entries
   + Generate/examine diffs
+  + git tag
+  + cherry pick commits from release to master (or vice versa)
 + Control flow
   + Prompt human user with multiple choices
   + Suspend for human review/confirmation
