@@ -1,0 +1,10 @@
+-- | Functions for working with .cabal files
+
+module Distribution.Ops.Cabal where
+
+findCabalFile :: Sh (Maybe FilePath)
+findCabalFile = do
+    files <- ls repo
+    return case filter (`FP.hasExtension` "cabal") files of
+      (fn:_) -> Just fn
+      [] -> Nothing
