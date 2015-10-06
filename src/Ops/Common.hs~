@@ -1,0 +1,5 @@
+-- |
+
+module Ops.Common where
+
+data FileMatchError = NoMatches | MultipleMatches [FilePath]
