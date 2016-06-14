@@ -49,19 +49,12 @@ main = do
 
 runActions :: Config -> Sh ()
 runActions config = do
-    case packageRequired config of
-      Just flag -> errorExit $ "The --package option is required with " <> flag
-      Nothing -> return ()
-    goals <- case doBounds config of
+    goals <- if doBounds config
                -- only modify / commit repos with this dependency
-               Just pkg -> filterM (needsUpdate pkg) (repos config)
+               then filterM (needsUpdate . package $ config) (repos config)
                -- assume user has already restricted to the modified repos
-               Nothing -> return $ repos config
-    case doBounds config of
-      Just pkg -> do
-        updateGoals goals pkg
-        traverse_ (commitCabalChanges pkg) goals
-      Nothing -> return ()
+               else return $ repos config
+    when (doBounds config) $ traverse_ (updateBoundsCommit (package config)) goals
     when (doClean config) $ cleanSandbox
     when (doBuild config) $ cabalInstall goals
     when (doChangelog config) $ traverse_ commitChangelog goals
@@ -70,30 +63,20 @@ runActions config = do
     echo $ T.unwords $ map toTextIgnore goals
 
 data Config = Config
-              { package     :: Maybe Text -- -p
+              { package     :: C.PackageIdentifier -- -p
               , repos       :: [FilePath]
-              , doBounds    :: Maybe C.PackageIdentifier -- -b
+              , doBounds    :: Bool -- -b
               , doClean     :: Bool -- -l
               , doBuild     :: Bool -- -i
               , doChangelog :: Bool -- c
               , doVersion   :: Bool -- V
               }
 
--- | If the --package flag is absent & required, return the requiring
--- flag.  If it is present or not required, return Nothing.
-packageRequired :: Config -> Maybe Text
-packageRequired config
-  | isJust (package config) = Nothing
-  | isJust (doBounds config) = Just "--bounds"
-  | doChangelog config = Just "--changelog"
-  | doVersion config = Just "--bump"
-  | otherwise = Nothing
-
 cliParser :: O.Parser Config
 cliParser = Config
-            <$> O.option (Just . T.pack <$> O.str) (O.long "package" <> O.short 'p' <> O.help "the newly allowed package version, like `lens-4.11`" <> O.value Nothing)
+            <$> O.option parsePackage (O.long "package" <> O.short 'p' <> O.help "the lowest excluded package version, like `lens-4.11`")
             <*> O.many (O.argument parseFilepath (O.help "a directory with a .cabal file" <> O.metavar "DIR"))
-            <*> O.option (Just <$> parsePackage) (O.long "bounds" <> O.short 'b' <> O.help "update .cabal files with the new upper bound, specified like `lens<4.12`" <> O.value Nothing)
+            <*> O.switch (O.long "bounds" <> O.short 'b' <> O.help "update .cabal files with the new upper bounds")
             <*> O.switch (O.long "clean" <> O.short 'l' <> O.help "delete a cabal sandbox in the current working directory, and restore, preserving add-source dependencies")
             <*> O.switch (O.long "build" <> O.long "install" <> O.short 'i' <> O.help "cabal install the specified directories")
             <*> O.switch (O.long  "changelog" <> O.short 'c' <> O.help "update Changelog")
@@ -106,10 +89,7 @@ helpParser = O.info (O.helper <*> cliParser)
              <> O.header "upper-bounds - point release automation for Haskell")
 
 -- trivial Monoid => Semigroup instances
-instance Semigroup (O.Mod O.OptionFields (Maybe C.PackageIdentifier)) where
-    (<>) = mappend
-
-instance Semigroup (O.Mod O.OptionFields (Maybe Text)) where
+instance Semigroup (O.Mod O.OptionFields C.PackageIdentifier) where
     (<>) = mappend
 
 instance Semigroup (O.Mod O.ArgumentFields FilePath) where
@@ -139,16 +119,10 @@ formatPkg :: C.PackageIdentifier -> Text
 formatPkg (C.PackageIdentifier (C.PackageName n) v) =
   mconcat [T.pack n, "-", showVersion v]
 
-updateGoals :: [FilePath] -> C.PackageIdentifier -> Sh ()
-updateGoals goals pkg = do
-    echo "preparing to update .cabal files for:"
-    echo $ T.unwords $ map toTextIgnore goals
-    traverse_ (updateCabal pkg) goals
-
-commitCabalChanges :: C.PackageIdentifier -> FilePath -> Sh ()
-commitCabalChanges pkg repo = chdir repo $ do
-    -- .cabal file already changed
-    gitCommit $ "cabal: allow " <> formatPkg pkg
+updateBoundsCommit :: C.PackageIdentifier -> FilePath -> Sh ()
+updateBoundsCommit pkg repo = do
+    updateBounds (pkg & pkgVersion_ %~ highestMatchingVersion) repo
+    chdir repo $ gitCommit $ "cabal: allow " <> formatPkg pkg
 
 commitChangelog :: FilePath -> Sh ()
 commitChangelog repo' = chdir repo' $ do

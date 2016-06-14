@@ -11,6 +11,7 @@ import qualified Filesystem.Path.CurrentOS             as FP
 import           Shelly
 
 import           Control.Lens
+import           Data.List
 import           Data.Monoid
 import           Data.Text                             (Text)
 import qualified Data.Text                             as T
@@ -61,8 +62,8 @@ needsUpdate pkg repo = errExit False $ do
 -- | Modify a cabal file in place to allow newer versions of the given
 -- dependency.  The 'PackageIdentifier' is used as the new upper
 -- bound, typically a version which does not yet exist.
-updateCabal :: C.PackageIdentifier -> FilePath -> Sh ()
-updateCabal pkg repo = do
+updateBounds :: C.PackageIdentifier -> FilePath -> Sh ()
+updateBounds pkg repo = do
     fn <- findCabalOrErr repo
     -- TODO Don't use regexen
     sed_ ["s/\\(", pname, ".*\\)< [0-9\\.]*/\\1< ", v, "/"] fn where
@@ -79,6 +80,7 @@ packageVersion :: C.PackageIdentifier -> Text
 packageVersion = T.pack . showVersion . C.pkgVersion
 
 makeLensesFor [("versionBranch", "versionBranch_")] ''Version
+makeLensesFor [("pkgVersion", "pkgVersion_")] ''C.PackageIdentifier
 
 -- Not a law-abiding Lens, due to extend.
 modVersion :: (Int -> Int) -> Int -> Version -> Version
@@ -95,6 +97,12 @@ incVersion = modVersion (+1)
 -- | Decrement a version in the nth position.  See @incVersion@.
 decVersion :: Int -> Version -> Version
 decVersion = modVersion pred
+
+-- | Calculate the highest matching version by decrementing the least
+-- significant non-zero digit.
+highestMatchingVersion :: Version -> Version
+highestMatchingVersion = versionBranch_ %~ dec . dropWhileEnd (== 0) where
+  dec = _last -~ 1
 
 getPackageVersion :: FilePath -> Sh C.Version
 getPackageVersion repo = do
