@@ -7,16 +7,20 @@ module Distribution.Ops.Cabal where
 
 import           Ops.Common
 
-import qualified Filesystem.Path.CurrentOS as FP
+import qualified Filesystem.Path.CurrentOS             as FP
 import           Shelly
 
 import           Control.Lens
 import           Data.Monoid
-import qualified Data.Text                 as T
+import           Data.Text                             (Text)
+import qualified Data.Text                             as T
 import           Data.Version
-import qualified Distribution.Package      as C
+import qualified Data.Version                          as C
+import qualified Distribution.Package                  as C
+import qualified Distribution.PackageDescription.Parse as C
+import qualified Distribution.Verbosity                as C
 
-import           Prelude                   hiding (FilePath)
+import           Prelude                               hiding (FilePath)
 
 findCabalFile :: FilePath -> Sh (Either FileMatchError FilePath)
 findCabalFile repo = do
@@ -66,12 +70,12 @@ updateCabal pkg repo = do
        v = packageVersion pkg
 
 -- | Extract the package name from a PackageIdentifier
-packageName :: C.PackageIdentifier -> T.Text
+packageName :: C.PackageIdentifier -> Text
 packageName p = T.pack name where
   (C.PackageName name) = C.pkgName p
 -- unPackageName only added in Cabal-1.22
 
-packageVersion :: C.PackageIdentifier -> T.Text
+packageVersion :: C.PackageIdentifier -> Text
 packageVersion = T.pack . showVersion . C.pkgVersion
 
 makeLensesFor [("versionBranch", "versionBranch_")] ''Version
@@ -91,3 +95,12 @@ incVersion = modVersion (+1)
 -- | Decrement a version in the nth position.  See @incVersion@.
 decVersion :: Int -> Version -> Version
 decVersion = modVersion pred
+
+getPackageVersion :: FilePath -> Sh C.Version
+getPackageVersion repo = do
+  fn <- findCabalOrErr repo
+  description <- liftIO $ C.readPackageDescription C.normal . FP.encodeString $ fn
+  return $ C.packageVersion description
+
+showVersion :: Version -> Text
+showVersion = T.pack . C.showVersion

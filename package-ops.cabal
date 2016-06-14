@@ -21,18 +21,24 @@ library
                   Distribution.Ops.Cabal
                 , Ops.Changelog
                 , Ops.Common
-                , Ops.Cabal.Sandbox
+                , Ops.Git.Commit
+                , Ops.Git.Config
+                , Ops.Cabal.Build
                 , Ops.Cabal.Common
+                , Ops.Cabal.Sandbox
   -- other-modules:       
   -- other-extensions:    
   build-depends:
                 base >=4.7 && <4.10
+              , Cabal >= 1.18 && < 1.25
+              , charset >= 0.3 && < 0.4
+              , containers >= 0.5 && < 0.6
+              , lens >= 4.11 && < 4.15
               , shelly >= 1.5 && < 1.7
               , split >= 0.2 && < 0.3
               , system-filepath >= 0.4 && < 0.5
               , text >= 1.2 && < 1.3
-              , Cabal >= 1.18 && < 1.25
-              , lens >= 4.11 && < 4.15
+              , trifecta >= 1.5 && < 1.6
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -44,3 +50,23 @@ executable cabal-sandbox-clean
                    base >= 4.7 && < 4.10
                 , package-ops
                 , shelly >= 1.5 && < 1.7
+
+executable point-release
+    main-is: Main.hs
+    hs-source-dirs: point-release-exe
+    default-language: Haskell2010
+    build-depends:
+                   base >= 4.7 && < 4.10
+                , Cabal >= 1.18 && < 1.25
+                , optparse-applicative >= 0.12 && < 0.13
+                , package-ops
+                , semigroups >= 0.15 && < 0.19
+                , shelly >= 1.5 && < 1.7
+                , system-filepath >= 0.4 && < 0.5
+                , text >= 1.2 && < 1.3
+                , trifecta >= 1.5 && < 1.6
+                , containers >= 0.5 && < 0.6
+                , split >= 0.2 && < 0.3
+                , transformers >= 0.4.2 && < 0.4.4
+                , lens >= 4.11 && < 4.15
+                , time >= 1.5 && < 1.7

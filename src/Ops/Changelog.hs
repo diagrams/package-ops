@@ -8,10 +8,10 @@ module Ops.Changelog where
 
 import           Ops.Common
 
+import           Data.Text                 (Text)
+import qualified Data.Text                 as T
 import qualified Filesystem.Path.CurrentOS as FP
 import           Shelly
-
-import qualified Data.Text                 as T
 
 import           Prelude                   hiding (FilePath)
 
@@ -32,3 +32,9 @@ findChangelog = do
      [] -> return $ Left NoMatches
      [fn] -> return $ Right fn
      fns -> return . Left . MultipleMatches $ fns
+
+-- | remove the top header
+trimChangelog :: Text -> Text
+trimChangelog oldCL = case T.lines oldCL of
+    ("# Change Log":rest) -> T.unlines $ dropWhile (\l -> T.strip l == "") rest
+    _ -> oldCL
