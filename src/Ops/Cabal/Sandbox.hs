@@ -4,18 +4,14 @@
 
 -- |
 
-module Ops.Sandbox where
+module Ops.Cabal.Sandbox where
 
-import           Data.List.Split (splitWhen)
-import           Data.Text       (Text)
-import qualified Data.Text       as T
+import           Ops.Cabal.Common
+
+import           Data.List.Split  (splitWhen)
+import           Data.Text        (Text)
+import qualified Data.Text        as T
 import           Shelly
-
-cabal_ :: Text -> [Text] -> Sh ()
-cabal_ = command1_ "cabal" []
-
-cabal :: Text -> [Text] -> Sh Text
-cabal = command1 "cabal" []
 
 createSandbox  :: Sh ()
 createSandbox = cabal_ "sandbox" ["init"]

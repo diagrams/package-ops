@@ -3,7 +3,7 @@
 
 module Main where
 
-import           Ops.Sandbox
+import           Ops.Cabal.Sandbox
 
 import           Shelly
 

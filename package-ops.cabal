@@ -21,7 +21,8 @@ library
                   Distribution.Ops.Cabal
                 , Ops.Changelog
                 , Ops.Common
-                , Ops.Sandbox
+                , Ops.Cabal.Sandbox
+                , Ops.Cabal.Common
   -- other-modules:       
   -- other-extensions:    
   build-depends:
