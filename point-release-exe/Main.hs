@@ -23,6 +23,7 @@ import           Control.Monad.Trans.Reader
 import           Data.Foldable
 import           Data.List.Split                       (splitWhen)
 import qualified Data.Map.Strict                       as M
+import           Data.Maybe
 import           Data.Semigroup
 import           Data.Text                             (Text)
 import qualified Data.Text                             as T
@@ -48,41 +49,55 @@ main = do
 
 runActions :: Config -> Sh ()
 runActions config = do
-    goals <- if (doCabal config)
-                -- only modify / commit repos with this dependency
-             then filterM (needsUpdate $ package config) (repos config)
-                  -- assume user has already restricted to the modified repos
-             else return $ repos config
-    when (doCabal config) $ updateGoals goals (package config)
+    case packageRequired config of
+      Just flag -> errorExit $ "The --package option is required with " <> flag
+      Nothing -> return ()
+    goals <- case doBounds config of
+               -- only modify / commit repos with this dependency
+               Just pkg -> filterM (needsUpdate pkg) (repos config)
+               -- assume user has already restricted to the modified repos
+               Nothing -> return $ repos config
+    case doBounds config of
+      Just pkg -> do
+        updateGoals goals pkg
+        traverse_ (commitCabalChanges pkg) goals
+      Nothing -> return ()
     when (doClean config) $ cleanSandbox
     when (doBuild config) $ cabalInstall goals
-    when (doCommitCabal config) $ traverse_ (commitCabalChanges $ package config) goals
-    when (doCommitChangelog config) $ traverse_ commitChangelog goals
-    when (doCommitVersion config) $ traverse_ commitVersionBump goals
+    when (doChangelog config) $ traverse_ commitChangelog goals
+    when (doVersion config) $ traverse_ commitVersionBump goals
     echo "The following packages were modified:"
     echo $ T.unwords $ map toTextIgnore goals
 
 data Config = Config
-              { package           :: C.PackageIdentifier -- -p
-              , repos             :: [FilePath]
-              , doCabal           :: Bool -- -d
-              , doClean           :: Bool -- -l
-              , doBuild           :: Bool -- -b
-              , doCommitCabal     :: Bool -- -g
-              , doCommitChangelog :: Bool -- c
-              , doCommitVersion   :: Bool -- V
+              { package     :: Maybe Text -- -p
+              , repos       :: [FilePath]
+              , doBounds    :: Maybe C.PackageIdentifier -- -b
+              , doClean     :: Bool -- -l
+              , doBuild     :: Bool -- -i
+              , doChangelog :: Bool -- c
+              , doVersion   :: Bool -- V
               }
+
+-- | If the --package flag is absent & required, return the requiring
+-- flag.  If it is present or not required, return Nothing.
+packageRequired :: Config -> Maybe Text
+packageRequired config
+  | isJust (package config) = Nothing
+  | isJust (doBounds config) = Just "--bounds"
+  | doChangelog config = Just "--changelog"
+  | doVersion config = Just "--bump"
+  | otherwise = Nothing
 
 cliParser :: O.Parser Config
 cliParser = Config
-            <$> O.option parsePackage (O.long "package" <> O.short 'p' <> O.help "the new upper bound, like lens<4.12")
+            <$> O.option (Just . T.pack <$> O.str) (O.long "package" <> O.short 'p' <> O.help "the newly allowed package version, like `lens-4.11`" <> O.value Nothing)
             <*> O.many (O.argument parseFilepath (O.help "a directory with a .cabal file" <> O.metavar "DIR"))
-            <*> O.switch (O.long "cabal" <> O.short 'd' <> O.help "update .cabal files with the new dependency")
+            <*> O.option (Just <$> parsePackage) (O.long "bounds" <> O.short 'b' <> O.help "update .cabal files with the new upper bound, specified like `lens<4.12`" <> O.value Nothing)
             <*> O.switch (O.long "clean" <> O.short 'l' <> O.help "delete a cabal sandbox in the current working directory, and restore, preserving add-source dependencies")
-            <*> O.switch (O.long "build" <> O.short 'b' <> O.help "cabal install the specified directories")
-            <*> O.switch (O.long "git" <> O.short 'g' <> O.help "Commit all changes, with a message about package bounds")
-            <*> O.switch (O.long  "changes" <> O.short 'c' <> O.help "update Changelog, commit")
-            <*> O.switch (O.long "bump" <> O.short 'V' <> O.help "bump version & commit")
+            <*> O.switch (O.long "build" <> O.long "install" <> O.short 'i' <> O.help "cabal install the specified directories")
+            <*> O.switch (O.long  "changelog" <> O.short 'c' <> O.help "update Changelog")
+            <*> O.switch (O.long "bump" <> O.short 'V' <> O.help "increment package version")
 
 helpParser :: O.ParserInfo Config
 helpParser = O.info (O.helper <*> cliParser)
@@ -91,7 +106,10 @@ helpParser = O.info (O.helper <*> cliParser)
              <> O.header "upper-bounds - point release automation for Haskell")
 
 -- trivial Monoid => Semigroup instances
-instance Semigroup (O.Mod O.OptionFields C.PackageIdentifier) where
+instance Semigroup (O.Mod O.OptionFields (Maybe C.PackageIdentifier)) where
+    (<>) = mappend
+
+instance Semigroup (O.Mod O.OptionFields (Maybe Text)) where
     (<>) = mappend
 
 instance Semigroup (O.Mod O.ArgumentFields FilePath) where
@@ -113,6 +131,9 @@ parsePackage = O.ReadM  $ do
 
 parseFilepath :: O.ReadM FP.FilePath
 parseFilepath = O.ReadM . asks $ FP.fromText . T.pack
+
+textOption :: O.ReadM Text
+textOption = T.pack <$> O.str
 
 formatPkg :: C.PackageIdentifier -> Text
 formatPkg (C.PackageIdentifier (C.PackageName n) v) =
