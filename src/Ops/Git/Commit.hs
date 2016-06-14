@@ -1,5 +1,6 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# OPTIONS_GHC -fno-warn-type-defaults #-}
 
 -- | Commonly used operations that change the local git repository.
 

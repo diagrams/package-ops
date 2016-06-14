@@ -12,7 +12,6 @@ import           Control.Lens              hiding (noneOf)
 import qualified Data.CharSet.Common       as Chars
 import           Data.Functor
 import           Data.Map.Strict           as M
-import           Data.Monoid
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import qualified Filesystem.Path.CurrentOS as FP
@@ -47,7 +46,7 @@ definition = do
     key <- many letter
     spaces >> char '=' >> spaces
     value <- many $ oneOfSet Chars.print
-    newline
+    void newline
     return (T.pack key, T.pack value)
 
 parseGitConfig :: FP.FilePath -> Sh (Maybe GitConfig)

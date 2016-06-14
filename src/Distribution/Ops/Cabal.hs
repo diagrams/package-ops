@@ -38,6 +38,7 @@ findCabalOrErr repo = do
     case mayFn of
       Right fn -> return fn
       Left NoMatches -> errorExit $ "Could not find .cabal file in: " <> toTextIgnore repo
+      Left (MultipleMatches []) -> errorExit "Impossible 0 > 1 bug"
       Left (MultipleMatches (fn:_)) -> do
         echo_err $ "Found multiple .cabal files in: " <> toTextIgnore repo
         echo_err $ "Continuing using: " <> toTextIgnore fn
@@ -52,12 +53,12 @@ needsUpdate :: C.PackageIdentifier -> FilePath -> Sh Bool
 needsUpdate pkg repo = errExit False $ do
     fn <- findCabalOrErr repo
     match <- cmd "grep" (packageName pkg <> ".*<") fn
-    exit <- lastExitCode
-    case exit of
+    ex <- lastExitCode
+    case ex of
       1 -> return False
     -- pkg is used, but maybe all the lines are up to date
       0 -> return . not $ all (T.isInfixOf . packageVersion $ pkg) (T.lines match)
-      _ -> errorExit $ "grep exited with unknown code " <> (T.pack . show $ exit)
+      _ -> errorExit $ "grep exited with unknown code " <> (T.pack . show $ ex)
 
 -- | Modify a cabal file in place to allow newer versions of the given
 -- dependency.  The 'PackageIdentifier' is used as the new upper

@@ -5,7 +5,6 @@
 module Ops.Cabal.Common where
 
 import           Data.Text (Text)
-import qualified Data.Text as T
 import           Shelly
 
 cabal_ :: Text -> [Text] -> Sh ()

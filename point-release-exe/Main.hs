@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
 
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 -- | This executable makes edits & commits following a format suitable
 -- for the Diagrams packages.
 
@@ -21,26 +22,22 @@ import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Trans.Reader
 import           Data.Foldable
-import           Data.List.Split                       (splitWhen)
-import qualified Data.Map.Strict                       as M
+import qualified Data.Map.Strict            as M
 import           Data.Maybe
 import           Data.Semigroup
-import           Data.Text                             (Text)
-import qualified Data.Text                             as T
+import           Data.Text                  (Text)
+import qualified Data.Text                  as T
 import           Data.Time
-import qualified Data.Version                          as C
-import qualified Distribution.Package                  as C
-import qualified Distribution.PackageDescription.Parse as C
-import           Distribution.Text                     (simpleParse)
-import qualified Distribution.Verbosity                as C
-import qualified Distribution.Version                  as C
-import qualified Filesystem.Path.CurrentOS             as FP
-import qualified Options.Applicative                   as O
-import qualified Options.Applicative.Types             as O
+import qualified Data.Version               as C
+import qualified Distribution.Package       as C
+import           Distribution.Text          (simpleParse)
+import qualified Filesystem.Path.CurrentOS  as FP
+import qualified Options.Applicative        as O
+import qualified Options.Applicative.Types  as O
 import           Shelly
 import           Text.Trifecta
 
-import           Prelude                               hiding (FilePath)
+import           Prelude                    hiding (FilePath)
 
 main :: IO ()
 main = do

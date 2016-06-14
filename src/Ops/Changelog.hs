@@ -30,8 +30,8 @@ findChangelog = do
     fns <- ls dir
     case filter changelogNames fns of
      [] -> return $ Left NoMatches
-     [fn] -> return $ Right fn
-     fns -> return . Left . MultipleMatches $ fns
+     [one] -> return $ Right one
+     multiple -> return . Left . MultipleMatches $ multiple
 
 -- | remove the top header
 trimChangelog :: Text -> Text
