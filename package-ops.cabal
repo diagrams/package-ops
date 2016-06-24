@@ -30,7 +30,8 @@ library
   -- other-modules:       
   -- other-extensions:    
   build-depends:
-                base >=4.7 && <4.10
+                base >=4.6 && <4.10
+              , base-compat >= 0.8 && < 0.9
               , Cabal >= 1.18 && < 1.25
               , charset >= 0.3 && < 0.4
               , containers >= 0.5 && < 0.6
@@ -48,7 +49,7 @@ executable cabal-sandbox-clean
     hs-source-dirs: sandbox-clean-exe
     default-language: Haskell2010
     build-depends:
-                   base >= 4.7 && < 4.10
+                   base >= 4.6 && < 4.10
                 , package-ops
                 , shelly >= 1.5 && < 1.7
 
@@ -57,7 +58,7 @@ executable point-release
     hs-source-dirs: point-release-exe
     default-language: Haskell2010
     build-depends:
-                   base >= 4.7 && < 4.10
+                   base >= 4.6 && < 4.10
                 , Cabal >= 1.18 && < 1.25
                 , optparse-applicative >= 0.12 && < 0.13
                 , package-ops

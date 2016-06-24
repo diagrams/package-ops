@@ -11,7 +11,6 @@ module Ops.Git.Config where
 import           Control.Applicative
 import           Control.Lens              hiding (noneOf)
 import qualified Data.CharSet.Common       as Chars
-import           Data.Functor
 import           Data.Map.Strict           as M
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -19,9 +18,9 @@ import qualified Filesystem.Path.CurrentOS as FP
 import           Shelly
 import           Text.Trifecta
 
-#if __GLASGOW_HASKELL__ < 710
-import           Data.Monoid
-#endif
+import           Data.Functor.Compat
+import           Prelude                   ()
+import           Prelude.Compat
 
 data SectionHead = Core | Remote Text | Branch Text
                  deriving (Show, Ord, Eq)
