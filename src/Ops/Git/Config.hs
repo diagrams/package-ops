@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP                  #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE OverloadedStrings    #-}
@@ -17,6 +18,10 @@ import qualified Data.Text                 as T
 import qualified Filesystem.Path.CurrentOS as FP
 import           Shelly
 import           Text.Trifecta
+
+#if __GLASGOW_HASKELL__ < 710
+import           Data.Monoid
+#endif
 
 data SectionHead = Core | Remote Text | Branch Text
                  deriving (Show, Ord, Eq)
