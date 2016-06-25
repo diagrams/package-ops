@@ -14,8 +14,12 @@ matrix:
 
 before_install:
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+  - cabal --version
+  - ghc --version
   - cabal sandbox init
-  - cabal install --dependencies-only
 
 install:
+  - cabal install --dependencies-only
+
+script:
    - cabal install --ghc-options='-Wall -Werror'
