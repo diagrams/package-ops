@@ -125,7 +125,7 @@ commitChangelog :: FilePath -> Sh ()
 commitChangelog repo' = chdir repo' $ do
     repo <- pwd
     oldVer <- getPackageVersion repo
-    let newVer = incVersion 4 oldVer
+    let newVer = incVersion 3 oldVer
     (clFN, oldCL) <- readChangelog
     date <- today
     mayGitConfig <- parseGitConfig repo
@@ -151,7 +151,7 @@ commitVersionBump repo' = chdir repo' $ do
     repo <- pwd
     fn <- findCabalOrErr repo
     oldVer <- getPackageVersion repo
-    let newVer = incVersion 4 oldVer
+    let newVer = incVersion 3 oldVer
     sed_ ["s/\\(^[Vv]ersion: *\\)[0-9\\.]*/\\1", showVersion newVer, "/"] fn
     gitCommit $ "bump version to " <> showVersion newVer
 
