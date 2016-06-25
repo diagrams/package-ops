@@ -118,8 +118,9 @@ formatPkg (C.PackageIdentifier (C.PackageName n) v) =
 
 updateBoundsCommit :: C.PackageIdentifier -> FilePath -> Sh ()
 updateBoundsCommit pkg repo = do
-    updateBounds (pkg & pkgVersion_ %~ highestMatchingVersion) repo
-    chdir repo $ gitCommit $ "cabal: allow " <> formatPkg pkg
+    updateBounds pkg repo
+    let allowed = pkg & pkgVersion_ %~ highestMatchingVersion
+    chdir repo $ gitCommit $ "cabal: allow " <> formatPkg allowed
 
 commitChangelog :: FilePath -> Sh ()
 commitChangelog repo' = chdir repo' $ do
