@@ -105,6 +105,9 @@ highestMatchingVersion :: Version -> Version
 highestMatchingVersion = versionBranch_ %~ dec . dropWhileEnd (== 0) where
   dec = _last -~ 1
 
+highestMatchingPackage :: C.PackageIdentifier -> C.PackageIdentifier
+highestMatchingPackage = pkgVersion_ %~ highestMatchingVersion
+
 getPackageVersion :: FilePath -> Sh C.Version
 getPackageVersion repo = do
   fn <- findCabalOrErr repo

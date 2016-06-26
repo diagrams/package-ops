@@ -54,7 +54,7 @@ runActions config = do
     when (doBounds config) $ traverse_ (updateBoundsCommit (package config)) goals
     when (doClean config) $ cleanSandbox
     when (doBuild config) $ cabalInstall goals
-    when (doChangelog config) $ traverse_ commitChangelog goals
+    when (doChangelog config) $ traverse_ (commitChangelog $ package config) goals
     when (doVersion config) $ traverse_ commitVersionBump goals
     echo "The following packages were modified:"
     echo $ T.unwords $ map toTextIgnore goals
@@ -119,11 +119,11 @@ formatPkg (C.PackageIdentifier (C.PackageName n) v) =
 updateBoundsCommit :: C.PackageIdentifier -> FilePath -> Sh ()
 updateBoundsCommit pkg repo = do
     updateBounds pkg repo
-    let allowed = pkg & pkgVersion_ %~ highestMatchingVersion
+    let allowed = highestMatchingPackage pkg
     chdir repo $ gitCommit $ "cabal: allow " <> formatPkg allowed
 
-commitChangelog :: FilePath -> Sh ()
-commitChangelog repo' = chdir repo' $ do
+commitChangelog :: C.PackageIdentifier -> FilePath -> Sh ()
+commitChangelog pkg repo' = chdir repo' $ do
     repo <- pwd
     oldVer <- getPackageVersion repo
     let newVer = incVersion 3 oldVer
@@ -138,7 +138,7 @@ commitChangelog repo' = chdir repo' $ do
              Nothing -> errorExit $ "Could not parse as github URL: " <> url
              Just ghUrl -> do
                  writefile clFN $
-                     changelog newVer oldVer date ghUrl oldCL
+                     changelog pkg newVer oldVer date ghUrl oldCL
                  gitCommit $ "CHANGELOG for " <> showVersion newVer
 
 today :: Sh Text
@@ -156,11 +156,13 @@ commitVersionBump repo' = chdir repo' $ do
     sed_ ["s/\\(^[Vv]ersion: *\\)[0-9\\.]*/\\1", showVersion newVer, "/"] fn
     gitCommit $ "bump version to " <> showVersion newVer
 
-changelog :: C.Version -> C.Version -> Text -> GithubUrl -> Text -> Text
-changelog newVer oldVer date (GithubUrl _ user repo) oldCL =
+changelog :: C.PackageIdentifier -> C.Version -> C.Version ->
+  Text -> GithubUrl -> Text -> Text
+changelog pkg newVer oldVer date (GithubUrl _ user repo) oldCL =
     mconcat ["## [v", showVersion newVer,
              "](https://github.com/", user, "/", repo, "/tree/v", showVersion newVer,
              ") (", date, ")\n\n",
+             "  - allow `", formatPkg (highestMatchingPackage pkg), "`\n\n",
              "[Full Changelog](https://github.com/", user, "/", repo, "/compare/v",
              showVersion oldVer, "...v", showVersion newVer, ")\n\n",
              trimChangelog oldCL
