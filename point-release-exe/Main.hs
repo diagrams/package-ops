@@ -48,19 +48,19 @@ runActions :: Config -> Sh ()
 runActions config = do
     goals <- if doBounds config
                -- only modify / commit repos with this dependency
-               then filterM (needsUpdate . package $ config) (repos config)
+               then filterM (needsUpdate . packages $ config) (repos config)
                -- assume user has already restricted to the modified repos
                else return $ repos config
-    when (doBounds config) $ traverse_ (updateBoundsCommit (package config)) goals
+    when (doBounds config) $ traverse_ (updateBoundsCommit (packages config)) goals
     when (doClean config) $ cleanSandbox
     when (doBuild config) $ cabalInstall goals
-    when (doChangelog config) $ traverse_ (commitChangelog $ package config) goals
+    when (doChangelog config) $ traverse_ (commitChangelog $ packages config) goals
     when (doVersion config) $ traverse_ commitVersionBump goals
     echo "The following packages were modified:"
     echo $ T.unwords $ map toTextIgnore goals
 
 data Config = Config
-              { package     :: C.PackageIdentifier -- -p
+              { packages    :: [C.PackageIdentifier] -- -p
               , repos       :: [FilePath]
               , doBounds    :: Bool -- -b
               , doClean     :: Bool -- -l
@@ -71,7 +71,7 @@ data Config = Config
 
 cliParser :: O.Parser Config
 cliParser = Config
-            <$> O.option parsePackage (O.long "package" <> O.short 'p' <> O.help "the lowest excluded package version, like `lens-4.11`")
+            <$> many (O.option parsePackage (O.long "package" <> O.short 'p' <> O.help "the lowest excluded package version, like `lens-4.11`.  Can be included more than once."))
             <*> O.many (O.argument parseFilepath (O.help "a directory with a .cabal file" <> O.metavar "DIR"))
             <*> O.switch (O.long "bounds" <> O.short 'b' <> O.help "update .cabal files with the new upper bounds")
             <*> O.switch (O.long "clean" <> O.short 'l' <> O.help "delete a cabal sandbox in the current working directory, and restore, preserving add-source dependencies")
@@ -116,14 +116,15 @@ formatPkg :: C.PackageIdentifier -> Text
 formatPkg (C.PackageIdentifier (C.PackageName n) v) =
   mconcat [T.pack n, "-", showVersion v]
 
-updateBoundsCommit :: C.PackageIdentifier -> FilePath -> Sh ()
-updateBoundsCommit pkg repo = do
-    updateBounds pkg repo
-    let allowed = highestMatchingPackage pkg
-    chdir repo $ gitCommit $ "cabal: allow " <> formatPkg allowed
+updateBoundsCommit :: [C.PackageIdentifier] -> FilePath -> Sh ()
+updateBoundsCommit deps repo = do
+    cabalFile <- findCabalOrErr repo
+    traverse_ (updateBounds cabalFile) deps
+    chdir repo $ gitCommit $ "cabal: allow" <>
+      T.intercalate ", " (map (formatPkg . highestMatchingPackage) deps)
 
-commitChangelog :: C.PackageIdentifier -> FilePath -> Sh ()
-commitChangelog pkg repo' = chdir repo' $ do
+commitChangelog :: [C.PackageIdentifier] -> FilePath -> Sh ()
+commitChangelog deps repo' = chdir repo' $ do
     repo <- pwd
     oldVer <- getPackageVersion repo
     let newVer = incVersion 3 oldVer
@@ -138,7 +139,7 @@ commitChangelog pkg repo' = chdir repo' $ do
              Nothing -> errorExit $ "Could not parse as github URL: " <> url
              Just ghUrl -> do
                  writefile clFN $
-                     changelog pkg newVer oldVer date ghUrl oldCL
+                     changelog deps newVer oldVer date ghUrl oldCL
                  gitCommit $ "CHANGELOG for " <> showVersion newVer
 
 today :: Sh Text
@@ -156,17 +157,19 @@ commitVersionBump repo' = chdir repo' $ do
     sed_ ["s/\\(^[Vv]ersion: *\\)[0-9\\.]*/\\1", showVersion newVer, "/"] fn
     gitCommit $ "bump version to " <> showVersion newVer
 
-changelog :: C.PackageIdentifier -> C.Version -> C.Version ->
+changelog :: [C.PackageIdentifier] -> C.Version -> C.Version ->
   Text -> GithubUrl -> Text -> Text
-changelog pkg newVer oldVer date (GithubUrl _ user repo) oldCL =
+changelog deps newVer oldVer date (GithubUrl _ user repo) oldCL =
     mconcat ["## [v", showVersion newVer,
              "](https://github.com/", user, "/", repo, "/tree/v", showVersion newVer,
              ") (", date, ")\n\n",
-             "  - allow `", formatPkg (highestMatchingPackage pkg), "`\n\n",
-             "[Full Changelog](https://github.com/", user, "/", repo, "/compare/v",
+             description,
+             "\n[Full Changelog](https://github.com/", user, "/", repo, "/compare/v",
              showVersion oldVer, "...v", showVersion newVer, ")\n\n",
              trimChangelog oldCL
-             ]
+             ] where
+  description = mconcat
+    ["  - allow `" <> formatPkg (highestMatchingPackage d) <> "`\n" | d <- deps]
 
 readChangelog :: Sh (FilePath, Text)
 readChangelog = do

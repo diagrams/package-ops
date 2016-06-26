@@ -49,27 +49,34 @@ findCabalOrErr repo = do
 -- line, and upper bounds expressed with @<@, not @==@.  Violating the
 -- first precondition can result in false positives; the second can
 -- result in false negatives.
-needsUpdate :: C.PackageIdentifier -> FilePath -> Sh Bool
-needsUpdate pkg repo = errExit False $ do
+needsUpdate :: [C.PackageIdentifier] -> FilePath -> Sh Bool
+needsUpdate pkgs repo = errExit False $ do
     fn <- findCabalOrErr repo
-    match <- cmd "grep" (packageName pkg <> ".*<") fn
+    match <- cmd "grep" (packageRegex pkgs) fn
     ex <- lastExitCode
     case ex of
       1 -> return False
     -- pkg is used, but maybe all the lines are up to date
-      0 -> return . not $ all (T.isInfixOf . packageVersion $ pkg) (T.lines match)
+      0 -> return . not $ all (dependencyUpdated pkgs) (T.lines match)
       _ -> errorExit $ "grep exited with unknown code " <> (T.pack . show $ ex)
+
+packageRegex :: [C.PackageIdentifier] -> Text
+packageRegex = T.intercalate "|" . map singlePkgRegex where
+  singlePkgRegex p = "(" <> packageName p <> ".*<)"
+
+dependencyUpdated :: [C.PackageIdentifier] -> Text -> Bool
+dependencyUpdated pkgs t = any updated pkgs where
+  updated p = T.isInfixOf (packageName p) t && T.isInfixOf (packageVersion p) t
 
 -- | Modify a cabal file in place to allow newer versions of the given
 -- dependency.  The 'PackageIdentifier' is used as the new upper
 -- bound, typically a version which does not yet exist.
-updateBounds :: C.PackageIdentifier -> FilePath -> Sh ()
-updateBounds pkg repo = do
-    fn <- findCabalOrErr repo
+updateBounds :: FilePath -> C.PackageIdentifier -> Sh ()
+updateBounds cabalFile dep = do
     -- TODO Don't use regexen
-    sed_ ["s/\\(", pname, ".*\\)< [0-9\\.]*/\\1< ", v, "/"] fn where
-       pname = packageName pkg
-       v = packageVersion pkg
+    sed_ ["s/\\(", depName, ".*\\)< [0-9\\.]*/\\1< ", v, "/"] cabalFile where
+       depName = packageName dep
+       v = packageVersion dep
 
 -- | Extract the package name from a PackageIdentifier
 packageName :: C.PackageIdentifier -> Text
