@@ -11,3 +11,6 @@ import           Shelly
 
 gitCommit :: Text -> Sh ()
 gitCommit msg  = cmd "git" "commit" "-am" msg
+
+gitTag :: Text -> Sh ()
+gitTag tag = cmd "git" "tag" tag

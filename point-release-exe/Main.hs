@@ -56,6 +56,7 @@ runActions config = do
     when (doBuild config) $ cabalInstall goals
     when (doChangelog config) $ traverse_ (commitChangelog $ packages config) goals
     when (doVersion config) $ traverse_ commitVersionBump goals
+    when (doTag config) $ traverse_ tagRelease goals
     echo "The following packages were modified:"
     echo $ T.unwords $ map toTextIgnore goals
 
@@ -67,6 +68,7 @@ data Config = Config
               , doBuild     :: Bool -- -i
               , doChangelog :: Bool -- c
               , doVersion   :: Bool -- V
+              , doTag       :: Bool -- t
               }
 
 cliParser :: O.Parser Config
@@ -78,6 +80,7 @@ cliParser = Config
             <*> O.switch (O.long "build" <> O.long "install" <> O.short 'i' <> O.help "cabal install the specified directories")
             <*> O.switch (O.long  "changelog" <> O.short 'c' <> O.help "update Changelog")
             <*> O.switch (O.long "bump" <> O.short 'V' <> O.help "increment package version")
+            <*> O.switch (O.long "tag" <> O.short 't' <> O.help "tag the final commit in git")
 
 helpParser :: O.ParserInfo Config
 helpParser = O.info (O.helper <*> cliParser)
@@ -182,3 +185,9 @@ readChangelog = do
     Left NoMatches -> errorExit $ "Could not find Changelog in " <> toTextIgnore dir
     Left (MultipleMatches fns) -> errorExit $ "Could not choose among: " <>
                                 T.unwords (map toTextIgnore fns)
+
+tagRelease :: FilePath -> Sh ()
+tagRelease repo' = chdir repo' $ do
+    repo <- pwd
+    version <- getPackageVersion repo
+    gitTag $ "v" <> showVersion version
