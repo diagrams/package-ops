@@ -48,7 +48,7 @@ runActions :: Config -> Sh ()
 runActions config = do
     goals <- if doBounds config
                -- only modify / commit repos with this dependency
-               then filterM (needsUpdate . packages $ config) (repos config)
+               then filterM (needsUpdate . dependencies $ config) (repos config)
                -- assume user has already restricted to the modified repos
                else return $ repos config
     when (doBounds config) $ traverse_ (updateBoundsCommit (packages config)) goals
@@ -61,19 +61,19 @@ runActions config = do
     echo $ T.unwords $ map toTextIgnore goals
 
 data Config = Config
-              { packages    :: [C.PackageIdentifier] -- -p
-              , repos       :: [FilePath]
-              , doBounds    :: Bool -- -b
-              , doClean     :: Bool -- -l
-              , doBuild     :: Bool -- -i
-              , doChangelog :: Bool -- c
-              , doVersion   :: Bool -- V
-              , doTag       :: Bool -- t
+              { dependencies :: [C.PackageIdentifier] -- -d
+              , repos        :: [FilePath]
+              , doBounds     :: Bool -- -b
+              , doClean      :: Bool -- -l
+              , doBuild      :: Bool -- -i
+              , doChangelog  :: Bool -- c
+              , doVersion    :: Bool -- V
+              , doTag        :: Bool -- t
               }
 
 cliParser :: O.Parser Config
 cliParser = Config
-            <$> many (O.option parsePackage (O.long "package" <> O.short 'p' <> O.help "the lowest excluded package version, like `lens-4.11`.  Can be included more than once."))
+            <$> many (O.option parsePackage (O.long "dependency" <> O.long "dep" <> O.short 'd' <> O.help "the lowest excluded package version, like `lens-4.11`.  Can be included more than once."))
             <*> O.many (O.argument parseFilepath (O.help "a directory with a .cabal file" <> O.metavar "DIR"))
             <*> O.switch (O.long "bounds" <> O.short 'b' <> O.help "update .cabal files with the new upper bounds")
             <*> O.switch (O.long "clean" <> O.short 'l' <> O.help "delete a cabal sandbox in the current working directory, and restore, preserving add-source dependencies")
