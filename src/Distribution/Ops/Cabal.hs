@@ -50,22 +50,22 @@ findCabalOrErr repo = do
 -- first precondition can result in false positives; the second can
 -- result in false negatives.
 needsUpdate :: [C.PackageIdentifier] -> FilePath -> Sh Bool
-needsUpdate pkgs repo = errExit False $ do
+needsUpdate deps repo = errExit False $ do
     fn <- findCabalOrErr repo
-    match <- cmd "grep" (packageRegex pkgs) fn
+    match <- cmd "grep" (packageRegex deps) fn
     ex <- lastExitCode
     case ex of
       1 -> return False
     -- pkg is used, but maybe all the lines are up to date
-      0 -> return . not $ all (dependencyUpdated pkgs) (T.lines match)
+      0 -> return . not $ all (dependencyUpdated deps) (T.lines match)
       _ -> errorExit $ "grep exited with unknown code " <> (T.pack . show $ ex)
 
 packageRegex :: [C.PackageIdentifier] -> Text
-packageRegex = T.intercalate "|" . map singlePkgRegex where
-  singlePkgRegex p = "(" <> packageName p <> ".*<)"
+packageRegex = T.intercalate "|" . map singleDepRegex where
+  singleDepRegex p = "(" <> packageName p <> ".*<)"
 
 dependencyUpdated :: [C.PackageIdentifier] -> Text -> Bool
-dependencyUpdated pkgs t = any updated pkgs where
+dependencyUpdated deps t = any updated deps where
   updated p = T.isInfixOf (packageName p) t && T.isInfixOf (packageVersion p) t
 
 -- | Modify a cabal file in place to allow newer versions of the given
